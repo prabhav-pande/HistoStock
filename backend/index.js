@@ -20,6 +20,16 @@ app.get('/', (req, res) => {
     })
 })
 
+app.get('/dates/:id', (req, res) => {
+  portfolioModel.getDates(req.params.id)
+  .then(response => {
+    res.status(200).send(response);
+  })
+  .catch(error => {
+    res.status(500).send(error);
+  })
+})
+
 app.get('/update_p/:id', (req, res) => {
   portfolioModel.updatePortfolio(req.params.id)
   .then(response => {
@@ -51,21 +61,27 @@ app.get('/stocks/:id', (req, res) => {
   })
 })
 
+
 app.get('/stocks', (req, res) => {
-  portfolioModel.getSearchStocks(req.params.id)
-  .then(response => {
-    res.status(200).send(response);
-  })
-  .catch(error => {
-    res.status(500).send(error);
-  })
-})
+  const port_sect = req.query.port_sect; // Use req.query to get query parameters
+  portfolioModel.getSearchStocks(port_sect)
+    .then(response => {
+      res.status(200).send(response);
+    })
+    .catch(error => {
+      res.status(500).send(error);
+    });
+});
+
+
 
 app.put('/stocks/:id', (req, res) => {
   const id = req.params.id;
   const newData = req.body;  // Extract symbol from req.body
   const symbol = newData.symbol;
-  const num = newData.num;
+  const num = newData.num_of_stocks;
+
+  console.log("TO UPDATE: ", id, symbol, num)
 
   // Ensure that the id is parsed as an integer
   const parsedId = parseInt(id, 10);
@@ -83,20 +99,6 @@ app.put('/stocks/:id', (req, res) => {
     });
 });
 
-
-app.delete('/stocks/:id/:symbol', (req, res) => {
-  const id = req.params.id;
-  const symbol = req.params.symbol;
-  
-  portfolioModel.deleteStocks(id, symbol)
-  .then(response => {
-    res.status(200).send(response);
-  })
-  .catch(error => {
-    res.status(500).send(error);
-  })
-
-});
 
 app.post('/stocks/:id', (req, res) => {
   portfolioModel.createStocks(req.body)
@@ -128,8 +130,19 @@ app.delete('/portfolio/:id', async (req, res) => {
   }
 });
 
+app.delete('/stocks/:id/:symbol', (req, res) => {
+  const id = req.params.id;
+  const symbol = req.params.symbol;
+  
+  portfolioModel.deleteStocks(id, symbol)
+  .then(response => {
+    res.status(200).send(response);
+  })
+  .catch(error => {
+    res.status(500).send(error);
+  })
 
-
+});
 
 app.listen(port, () => {
   console.log(`App running on port ${port}.`)

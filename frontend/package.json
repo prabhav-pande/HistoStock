@@ -27,11 +27,14 @@
     "@tiptap/react": "^2.1.12",
     "@tiptap/starter-kit": "^2.1.12",
     "clsx": "^2.0.0",
+    "date-fns": "^2.30.0",
     "dayjs": "^1.11.10",
     "embla-carousel-react": "^7.1.0",
     "mantine-datatable": "^7.1.7",
     "material-react-table": "^2.0.4",
+    "moment": "^2.29.4",
     "react": "^18.2.0",
+    "react-datepicker": "^4.24.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {

@@ -51,6 +51,7 @@ const getIndustry = async () => {
 
 
 const updateStock = async (id, symbol, num) => {
+  console.log("IN UPDATE STOCK: ", id, symbol, num)
   try {
     await new Promise(function (resolve, reject) {
       pool.query(
@@ -142,21 +143,12 @@ const getPortfolios = async () => {
 
   const deletePortfolioAndHoldings = async (portfolioId) => {
     try {
-      // Start a transaction
       await pool.query('BEGIN');
-  
-      // First, delete portfolio holdings
       await pool.query('DELETE FROM portfolio_holdings WHERE portfolio_id = $1', [portfolioId]);
-  
-      // Next, delete the portfolio itself
       await pool.query('DELETE FROM portfolios WHERE port_id = $1', [portfolioId]);
-  
-      // Commit the transaction
       await pool.query('COMMIT');
-  
       return `Portfolio and associated holdings deleted with ID: ${portfolioId}`;
     } catch (error) {
-      // If an error occurs, rollback the transaction
       await pool.query('ROLLBACK');
       throw error;
     }
@@ -177,6 +169,7 @@ const getPortfolios = async () => {
       );
     });
   };
+  
   const createStocks = (body) => {
     return new Promise(function (resolve, reject) {
       const { id, symbol, num } = body;
@@ -202,23 +195,67 @@ const getPortfolios = async () => {
   };
 
   //get all portfolios our database
-const getSearchStocks = async () => {
+const getSearchStocks = async (port_sect) => {
   try {
     return await new Promise(function (resolve, reject) {
-      pool.query("SELECT Ticker FROM company", (error, results) => {
-        if (error) {
-          reject(error);
-        }
-        if (results && results.rows) {
-          resolve(results.rows);
-        } else {
-          reject(new Error("No results found"));
-        }
-      });
+      if (port_sect != 'ALL') {
+        pool.query("SELECT Ticker FROM company WHERE Industry = $1",[port_sect], (error, results) => {
+          if (error) {
+            reject(error);
+          }
+          if (results && results.rows) {
+            resolve(results.rows);
+          } else {
+            reject(new Error("No results found"));
+          }
+        });
+      } else {
+        pool.query("SELECT Ticker FROM company", (error, results) => {
+          if (error) {
+            reject(error);
+          }
+          if (results && results.rows) {
+            resolve(results.rows);
+          } else {
+            reject(new Error("No results found"));
+          }
+        });
+      }
+
     }); 
   } catch (error_1) {
     console.error(error_1);
     throw new Error("Internal server error");
+  }
+};
+
+
+const getDates = async (id) => {
+  try {
+    const result = await new Promise(function (resolve, reject) {
+      pool.query(
+        "CALL find_range_date_in_port($1, null, null)",
+        [id],
+        (error, results) => {
+          if (error) {
+            reject(error);
+          } else {
+            const { p_min_date, p_max_date } = results.rows[0];
+
+            if (p_min_date !== null && p_max_date !== null) {
+              resolve({ min_date: p_min_date, max_date: p_max_date });
+            } else {
+              reject(new Error("No results found"));
+            }
+          }
+        }
+      );
+    });
+
+    return result; 
+  } catch (error) {
+    console.error(error);
+    throw new Error(error.message || 'Internal server error');
   }
 };
 
@@ -234,5 +271,6 @@ const getSearchStocks = async () => {
     getIndustry,
     getSearchStocks,
     updatePortfolio,
-    deletePortfolioAndHoldings
+    deletePortfolioAndHoldings,
+    getDates
   };

@@ -1,10 +1,10 @@
 import {useState, useEffect} from 'react';
-import Landing from './layouts/landing';
 import '@mantine/core/styles.css';
-import { MantineProvider, Button, Table, ScrollArea, ActionIcon, Modal, TextInput, Select, NumberInput } from '@mantine/core';
-import { IconEdit } from '@tabler/icons-react';
-import { DataTable } from 'mantine-datatable';
-import { useDisclosure } from '@mantine/hooks';
+import { MantineProvider, Button, Table, ScrollArea, Modal, TextInput, Select, NumberInput } from '@mantine/core';
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { IconCalendarStats } from '@tabler/icons-react';
+import moment from 'moment'
 
 function App() {
   const [portfolio, setPortfolio] = useState(false);
@@ -19,30 +19,45 @@ function App() {
   const [port_industry, setPortIndustry] = useState('');
   const [symbol, setSymbol] = useState('') 
   const [num, setNum] = useState(1)
+  const [statsOpen, setStatsOpen] = useState(false)
+  const [startDate, setStartDate] = useState(new Date());
+  const [endDate, setEndDate] = useState(new Date());
+  const [minDate, setMinDate] = useState(new Date())
+  const [maxDate, setMaxDate] = useState(new Date())
 
-  function openPortfolio() {
+  // use effect
+  useEffect(() => {
+    getPortfolio()
+
+  }, [openedPort]);
+
+  // Adding a portfolio (Opening Modal and fetching industries available)
+  function addPortfolio() {
     setOpenedPort(true)
-      fetch('http://localhost:3001/industry')
-      .then(response => response.json())  // Parse the response as JSON
-      .then(data => {
-        console.log(data);
-        const industryNames = data.map(item => item.industry);
-        industryNames.push('ALL');
-        setIndustry(industryNames);
-      });
-
+    // Fetching industries available in database
+    fetch('http://localhost:3001/industry')
+    .then(response => response.json())
+    .then(data => {
+      console.log(data);
+      const industryNames = data.map(item => item.industry);
+      industryNames.push('ALL');
+      setIndustry(industryNames);
+    });
   }
 
+  // Getting portfolios from the database
   function getPortfolio() {
     fetch('http://localhost:3001')
       .then(response => {
         return response.text();
       })
       .then(data => {
+        console.log(data)
         setPortfolio(JSON.parse(data));
       });
   }
 
+  // Creating a new portfolio in database
   function createPortfolio() {
     fetch('http://localhost:3001/portfolio', {
       method: 'POST',
@@ -57,60 +72,12 @@ function App() {
       .then(data => {
         alert(data);
         setPortName('');
-        setPortIndustry('')
-        getPortfolio();
+        setPortIndustry('');
         setOpenedPort(false)
       });
-
-  }
-
-  function createStock() {
-    const id = currPortfolio;  
-    fetch(`http://localhost:3001/stocks/${id}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ id, symbol, num: num }),
-    })
-      .then(response => response.text())
-      .then(data => {
-        alert(data);
-        updatePortfolio(currPortfolio);
-      })
-      .catch(error => {
-        console.error('Error creating stock:', error);
-      });
-    fetch(`http://localhost:3001/update_p/${id}`)
-      .then(response => {
-        return response.text();
-      })
-      .then(() => {
-        getPortfolio();
-    });
   }
   
-  function updatePortfolio(id) {
-    setOpened(true)
-    setCurrentPortfolio(id)
-    fetch(`http://localhost:3001/stocks/${id}`)
-      .then(response => {
-        return response.text();
-      })
-      .then(data => {
-        setStocks(JSON.parse(data));
-    });
-    if (searchStocks.length == 0) {
-      fetch(`http://localhost:3001/stocks`)
-      .then(response => response.json())  // Parse the response as JSON
-      .then(data => {
-        console.log(data);
-        const stockNames = data.map(item => item.ticker);
-        setSearchStocks(stockNames);
-      });
-    }
-  }
-
+  // deleting a portfolio
   function deletePortfolio(id) {
     fetch(`http://localhost:3001/portfolio/${id}`, {
       method: 'DELETE',
@@ -124,67 +91,149 @@ function App() {
     });
   }
 
-  function deleteStock(id, symbol) {
-    fetch(`http://localhost:3001/stocks/${id}/${symbol}`, {
-      method: 'DELETE',
-    })
-      .then(response => {
-        return response.text();
-      })
-      .then(data => {
-        alert(data);
-        updatePortfolio(id);
-      })
-      .catch(error => {
-        console.error('Error deleting stock:', error);
-    });
-    fetch(`http://localhost:3001/update_p/${id}`)
-      .then(response => {
-        return response.text();
-      })
-      .then(() => {
-        getPortfolio();
-    });
-  }
-  
+  // Opening a portfolio (Opening Modal to add stocks)
+  async function openPortfolio(id, port_sect) {
+    try {
+      // Set the current portfolio being observed
+      setCurrentPortfolio(id);
 
-  function updateStock(id, symbol) {
-    let num = prompt('Enter new # of stocks');
-    // Ensure num is a valid integer
-    num = parseInt(num);
-    if (isNaN(num)) {
-      console.error('Invalid value for num:', num);
-      return; // You may want to handle this error case differently
+      // Fetch stocks in that portfolio
+      const stocksResponse = await fetch(`http://localhost:3001/stocks/${id}`);
+      const stocksData = await stocksResponse.text();
+      setStocks(JSON.parse(stocksData));
+      
+      // Fetch the stocks pertaining to the portfolio's sector
+      const allStocksResponse = await fetch(`http://localhost:3001/stocks?port_sect=${port_sect}`);
+      const allStocksData = await allStocksResponse.json();
+      console.log(allStocksData);
+      
+      const stockNames = allStocksData.map(item => item.ticker);
+      setSearchStocks(stockNames);
+
+      // Open the modal after fetching data
+      setOpened(true);
+    } catch (error) {
+      console.error('Error updating portfolio:', error);
     }
-  
-    fetch(`http://localhost:3001/stocks/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ id, symbol, num_of_stocks: num }),
-    })
-      .then(updatedData => {
-        console.log("UPDATED DATA", updatedData);  // Corrected variable name
-        updatePortfolio(id)
-      })
-      .catch(error => {
-        console.error('Error updating data:', error);
-    });
+  }
 
-    fetch(`http://localhost:3001/update_p/${id}`)
-    .then(response => {
-      return response.text();
-    })
-    .then(() => {
-      getPortfolio();
-    });
+  // Adding a new stock to the portfolio
+  async function addStock() {
+    try {
+      const id = currPortfolio;
+      // Create a new stock
+      const createStockResponse = await fetch(`http://localhost:3001/stocks/${id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id, symbol, num: num }),
+      });
+  
+      const createStockData = await createStockResponse.text();
+      alert(createStockData);
+  
+      // Open the portfolio and update it after creating the stock
+      await openPortfolio(currPortfolio);
+  
+      // Update the portfolio
+      await fetch(`http://localhost:3001/update_p/${id}`);
+  
+      // Fetch the updated portfolio
+      await getPortfolio();
+    } catch (error) {
+      console.error('Error creating stock or updating portfolio:', error);
+    }
   }
   
+  // updating a stock number
+  async function updateStock(id, symbol) {
+    try {
+      let num = prompt('Enter new # of stocks');
+      // Ensure num is a valid integer
+      num = parseInt(num);
+      if (isNaN(num)) {
+        console.error('Invalid value for num:', num);
+        return; // You may want to handle this error case differently
+      }
+      // Update the stock number
+      const updateStockResponse = await fetch(`http://localhost:3001/stocks/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id, symbol, num_of_stocks: num }),
+      });
+  
+      const updatedData = await updateStockResponse.text();
+      console.log("UPDATED DATA", updatedData);
+  
+      // Open the portfolio and update it after updating the stock
+      const stocksResponse = await fetch(`http://localhost:3001/stocks/${id}`);
+      const stocksData = await stocksResponse.text();
+      setStocks(JSON.parse(stocksData));
 
-  useEffect(() => {
-    getPortfolio()
-  }, []);
+      // // Update the portfolio
+      await fetch(`http://localhost:3001/update_p/${id}`);
+
+      // Fetch the updated portfolio
+      await getPortfolio();
+    } catch (error) {
+      console.error('Error updating stock or portfolio:', error);
+    }
+  }
+
+  // deleting a stock
+  async function deleteStock(id, symbol) {
+    try {
+        // Delete the stock
+        const deleteStockResponse = await fetch(`http://localhost:3001/stocks/${id}/${symbol}`, {
+            method: 'DELETE',
+        });
+        const deleteStockData = await deleteStockResponse.text();
+        alert(deleteStockData);
+
+
+        // Open the portfolio and update it after updating the stock
+        const stocksResponse = await fetch(`http://localhost:3001/stocks/${id}`);
+        const stocksData = await stocksResponse.text();
+        setStocks(JSON.parse(stocksData));
+
+        // Update the portfolio
+        await fetch(`http://localhost:3001/update_p/${id}`);
+
+        // Get the updated portfolio
+        await getPortfolio();
+    } catch (error) {
+        console.error('Error deleting stock:', error);
+    }
+}
+
+  // open a report to generate
+  function openReport(id) {
+    setStatsOpen(true);
+    setCurrentPortfolio(id);
+    fetch(`http://localhost:3001/dates/${id}`)
+      .then(response => response.json())
+      .then(data => {
+        const { min_date, max_date } = data;
+        const minDateObj = new Date(min_date);
+        const maxDateObj = new Date(max_date);
+        const formattedMinDate = minDateObj.toISOString().split('T')[0]; // "2013-02-08"
+        const formattedMaxDate = maxDateObj.toISOString().split('T')[0]; // "2018-02-07"
+        setMinDate(new Date(formattedMinDate));
+        setMaxDate(new Date(formattedMaxDate));
+        setStartDate(new Date(formattedMinDate));
+        setEndDate(new Date(formattedMaxDate));
+      })
+      .catch(error => {
+        console.error('Error fetching data:', error);
+      });
+  }
+
+  function createReport() {
+
+  }
 
   return (
     <MantineProvider>
@@ -198,7 +247,7 @@ function App() {
           <div className='text-lg font-bold'>
             Portfolios
           </div>
-            <Button className='bg-emerald-400' onClick={openPortfolio}> 
+            <Button className='bg-emerald-400' onClick={addPortfolio}> 
               Add Portfolio
             </Button>          
         </div>
@@ -223,7 +272,7 @@ function App() {
                     <Table.Td>{row.num_of_stocks}</Table.Td>
                     <Table.Td>{row.num_of_holdings}</Table.Td>
                     <Table.Td> 
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="fill-green-400 w-6 h-6" onClick={() => {updatePortfolio(row.port_id)}}>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="fill-green-400 w-6 h-6" onClick={() => {openPortfolio(row.port_id, row.port_sect)}}>
   <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
 </svg>
                     </Table.Td> 
@@ -232,6 +281,9 @@ function App() {
   <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                     </svg>
                   </Table.Td> 
+                  <Table.Td>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="icon icon-tabler icon-tabler-report-analytics" width="24" height="24" viewBox="0 0 24 24" onClick={() => {openReport(row.port_id)}} strokeWidth={2} stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2" /><path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" /><path d="M9 17v-5" /><path d="M12 17v-1" /><path d="M15 17v-3" /></svg>
+                  </Table.Td>
                   </Table.Tr>
           ))} 
           
@@ -259,7 +311,7 @@ function App() {
       min={1}
       value={num} onChange={setNum}
       />
-        <Button className='bg-emerald-400' onClick={createStock}> 
+        <Button className='bg-emerald-400' onClick={addStock}> 
               New Stock
         </Button>   
         </div>
@@ -325,8 +377,40 @@ function App() {
         </>
     </div>
   </Modal>
-</>
-
+  </>
+  {minDate && maxDate && (
+  <Modal opened={statsOpen} onClose={() => { setStatsOpen(false) }} title="Set a from and to date for this portfolio" size="lg" fullScreen centered>
+    <div className='flex flex-row justify-center place-content-around space-x-4'>
+      <DatePicker 
+        className='rounded-md border-2 border-black border-solid w-64'
+        title="Start Date"
+        isClearable
+        selected={startDate} 
+        onChange={(date) => setStartDate(date)}
+        icon={<IconCalendarStats></IconCalendarStats>}
+        showIcon
+        minDate={new Date(minDate)}
+        maxDate={new Date(maxDate)}
+        placeholderText='Input Start Date'
+      />
+      <DatePicker 
+        className='rounded-md border-2 border-black border-solid w-64'
+        title="End Date"
+        isClearable
+        selected={endDate} 
+        onChange={(date) => setEndDate(date)}
+        icon={<IconCalendarStats></IconCalendarStats>}
+        showIcon
+        minDate={new Date(minDate)}
+        maxDate={new Date(maxDate)}
+        placeholderText='Input End Date'
+      />
+    </div>
+    <Button className='bg-emerald-400 mt-4' onClick={createReport}> 
+      Generate Report
+    </Button>  
+  </Modal>
+)}
       </div>
     </MantineProvider>
   );
