@@ -233,7 +233,7 @@ const getDates = async (id) => {
   try {
     const result = await new Promise(function (resolve, reject) {
       pool.query(
-        "CALL find_range_date_in_port($1, null, null)",
+        "CALL find_range($1, null, null)",
         [id],
         (error, results) => {
           if (error) {
@@ -262,18 +262,20 @@ const getPortfolioValue = async (id, startDate, endDate) => {
   try {
     const result = await new Promise(function (resolve, reject) {
       pool.query(
-        "CALL calculate_portfolio_value($1, $2, $3, null, null, null)",
+        "CALL calculate_portfolio_value($1, $2, $3)",
         [id, startDate, endDate],
-        (error, results) => {
+        async (error, results) => {
           if (error) {
             reject(error);
           } else {
-            const { start_value_result, end_value_result, profit_result } = results.rows[0];
+            const portfolio_value_results = await pool.query(
+              "SELECT * FROM port_value"
+            );
 
-            if (start_value_result !== null && end_value_result !== null && profit_result !== null) {
-              resolve({ start: start_value_result, end: end_value_result, profit: profit_result});
+            if (portfolio_value_results.rows.length > 0) {
+              resolve(portfolio_value_results.rows);
             } else {
-              reject(new Error("No results found"));
+              reject(new Error("No results found for minimum stock price"));
             }
           }
         }
@@ -299,7 +301,7 @@ const getStockMinPrice = async (id, startDate, endDate) => {
             reject(error);
           } else {
             const minPriceResult = await pool.query(
-              "SELECT * FROM stock_min_price_dates"
+              "SELECT * FROM stock_min"
             );
 
             if (minPriceResult.rows.length > 0) {
@@ -331,7 +333,7 @@ const getStockMaxPrice = async (id, startDate, endDate) => {
           } else {
             // Query the created table to get the results
             const maxPriceResult = await pool.query(
-              "SELECT * FROM stock_max_price_dates"
+              "SELECT * FROM stock_max"
             );
 
             if (maxPriceResult.rows.length > 0) {
@@ -355,7 +357,7 @@ const getAvgHigh = async (id, startDate, endDate) => {
   try {
     const result = await new Promise(function (resolve, reject) {
       pool.query(
-        "CALL rank_stocks_by_avg_high($1, $2, $3)",
+        "CALL rank_by_avg_high($1, $2, $3)",
         [id, startDate, endDate],
         async (error, results) => {
           if (error) {
@@ -387,27 +389,21 @@ const getMICompany = async (id, startDate, endDate) => {
   try {
     const result = await new Promise(function (resolve, reject) {
       pool.query(
-        "CALL most_improved_stock($1, $2, $3, null, null, null, null, null, null, null)",
+        "CALL most_improved_stock($1, $2, $3)",
         [id, startDate, endDate],
-        (error, results) => {
+        async (error, results) => {
           if (error) {
             reject(error);
           } else {
-            const { symbol_result, price_increase_result, company_name_result, industry_result, sub_industry_result, date_added, founded_result } = results.rows[0];
+            // Query the created table to get the results
+            const most_improved_stock = await pool.query(
+              "SELECT * FROM mis"
+            );
 
-            if (symbol_result !== null && price_increase_result !== null && company_name_result !== null &&
-              industry_result !== null && sub_industry_result !== null && date_added !== null && founded_result !== null) {
-              resolve({ 
-                symbol: symbol_result, 
-                pir: price_increase_result, 
-                c_name: company_name_result,
-                indus: industry_result,
-                sub_indus: sub_industry_result,
-                date_a: date_added,
-                founded: founded_result
-              });
+            if (most_improved_stock.rows.length > 0) {
+              resolve(most_improved_stock.rows);
             } else {
-              reject(new Error("No results found"));
+              reject(new Error("No results found for most improved stock"));
             }
           }
         }

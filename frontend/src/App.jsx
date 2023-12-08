@@ -1,6 +1,6 @@
 import {useState, useEffect} from 'react';
 import '@mantine/core/styles.css';
-import { MantineProvider, Button, Table, ScrollArea, Modal, TextInput, Select, NumberInput } from '@mantine/core';
+import { MantineProvider, Button, Table, ScrollArea, Modal, TextInput, Select, NumberInput, Text } from '@mantine/core';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { IconCalendarStats } from '@tabler/icons-react';
@@ -24,11 +24,16 @@ function App() {
   const [endDate, setEndDate] = useState(new Date());
   const [minDate, setMinDate] = useState(new Date())
   const [maxDate, setMaxDate] = useState(new Date())
+  const [minStock, setMinStock] = useState([])
+  const [maxStock, setMaxStock] = useState([])
+  const [avgHigh, setavgHigh] = useState([])
+  const [mis, setMIS] = useState([])
+  const [portValue, setPortValue] = useState([])
+  const [reportPort, setReportPort] = useState(null)
 
   // use effect
   useEffect(() => {
     getPortfolio()
-
   }, [openedPort]);
 
   // Adding a portfolio (Opening Modal and fetching industries available)
@@ -230,36 +235,51 @@ function App() {
 
     const formattedStartDate = startDate.toISOString();
     const formattedEndDate = endDate.toISOString();
-  
     console.log(currPortfolio, formattedStartDate, formattedEndDate);
   
     try {
       const stock_min = await fetch(`http://localhost:3001/report1/${currPortfolio}?startDate=${formattedStartDate}&endDate=${formattedEndDate}`);
       const stock_min_data = await stock_min.text();
+      setMinStock(JSON.parse(stock_min_data));
 
       const stock_max = await fetch(`http://localhost:3001/report2/${currPortfolio}?startDate=${formattedStartDate}&endDate=${formattedEndDate}`);
       const stock_max_data = await stock_max.text();
+      setMaxStock(JSON.parse(stock_max_data));
 
       const port_value = await fetch(`http://localhost:3001/report3/${currPortfolio}?startDate=${formattedStartDate}&endDate=${formattedEndDate}`);
-      const port_value_data = await port_value.json();
-      const {start, end, profit} = port_value_data;
+      const port_value_data = await port_value.text();
+      setPortValue(JSON.parse(port_value_data));
   
       const avg_high = await fetch(`http://localhost:3001/report4/${currPortfolio}?startDate=${formattedStartDate}&endDate=${formattedEndDate}`);
       const avg_high_data = await avg_high.text();
+      setavgHigh(JSON.parse(avg_high_data));
 
       const most_improved = await fetch(`http://localhost:3001/report5/${currPortfolio}?startDate=${formattedStartDate}&endDate=${formattedEndDate}`);
-      const most_improved_data = await most_improved.json();
-      const {symbol, pir, c_name, indus, sub_indus, date_a, founded} = most_improved_data;
+      const most_improved_data = await most_improved.text();
+      setMIS(JSON.parse(most_improved_data));
   
       console.log(stock_min_data);
       console.log(stock_max_data);
-      console.log(start, end, profit)
+      console.log(port_value_data)
       console.log(avg_high_data)
-      console.log(symbol, pir, c_name, indus, sub_indus, date_a, founded)
+      console.log(most_improved_data)
+
+      setReportPort(portfolio.find(port => port.port_id === currPortfolio));
+
     } catch (error) {
       console.error(error);
       // Handle errors as needed
     }
+  }
+
+  function closeReport() {
+    setStatsOpen(false)
+    setReportPort(null)
+    setMinStock([])
+    setMaxStock([])
+    setavgHigh([])
+    setMIS([])
+    setPortValue([])
   }
   
 
@@ -411,7 +431,7 @@ function App() {
   </Modal>
   </>
   {minDate && maxDate && (
-  <Modal opened={statsOpen} onClose={() => { setStatsOpen(false) }} title="Set a from and to date for this portfolio" size="lg" fullScreen centered>
+  <Modal opened={statsOpen} onClose={() => {closeReport()}} title="Set a from and to date for this portfolio" size="lg" fullScreen centered>
     <div className='flex flex-row justify-center place-content-around space-x-4'>
       <DatePicker 
         className='rounded-md border-2 border-black border-solid w-64'
@@ -441,6 +461,165 @@ function App() {
     <Button className='bg-emerald-400 mt-4' onClick={createReport}> 
       Generate Report
     </Button>  
+    <div>
+    {reportPort && (
+      <div className='flex flex-col place-content-evenly mt-4'>
+        <div className='font-bold text-lg text-emerald-700'>
+          Portfolio: 
+          </div>
+        <div className='flex flex-row place-content-evenly'>
+          <Text>
+            Portfolio ID: {reportPort.port_id}
+          </Text>
+          <Text>
+            Portfolio Name: {reportPort.port_name}
+          </Text>
+          <Text>
+            Portfolio Sector:  {reportPort.port_sect}
+          </Text>
+          <Text>
+            # of Stocks: {reportPort.num_of_stocks}
+          </Text>
+          <Text>
+            # of Holdings: {reportPort.num_of_holdings}
+          </Text>
+        </div>
+
+        <div className='font-bold mt-4 text-lg text-emerald-700'>
+          Portfolio Value: 
+          </div>
+          <div>
+        <ScrollArea h={100} onScrollPositionChange={({ y }) => setScrolled(y !== 0)}>
+      <Table miw={700}>
+        <Table.Thead>
+          <Table.Tr>  
+          <Table.Th>Value at Start Date</Table.Th>
+            <Table.Th>Value at End Date</Table.Th>
+            <Table.Th>Profit Made</Table.Th>
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>                
+          {portValue.map((row) => (
+                  <Table.Tr key={row.start_value}>
+                    <Table.Td>{row.start_value}</Table.Td>
+                    <Table.Td>{row.end_value}</Table.Td>
+                    <Table.Td>{row.profit}</Table.Td>
+                  </Table.Tr>
+          ))} 
+          </Table.Tbody>
+      </Table>
+      </ScrollArea> 
+        </div>
+        <div className='font-bold mt-4 text-lg text-emerald-700'>
+          Company that generated most profit: 
+          </div>
+          <div>
+        <ScrollArea h={100} onScrollPositionChange={({ y }) => setScrolled(y !== 0)}>
+      <Table miw={700}>
+        <Table.Thead>
+          <Table.Tr>  
+          <Table.Th>Symbol</Table.Th>
+            <Table.Th>Increase in profit</Table.Th>
+            <Table.Th>Company Name</Table.Th>
+            <Table.Th>Industry</Table.Th>
+            <Table.Th>Sub-Industry</Table.Th>
+            <Table.Th>Date Added</Table.Th>
+            <Table.Th>Founded</Table.Th>
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>                
+          {mis.map((row) => (
+                  <Table.Tr key={row.symbol}>
+                    <Table.Td>{row.symbol}</Table.Td>
+                    <Table.Td>{row.p_increase}</Table.Td>
+                    <Table.Td>{row.c_name}</Table.Td>
+                    <Table.Td>{row.indus}</Table.Td>
+                    <Table.Td>{row.sub_indus}</Table.Td>
+                    <Table.Td>{row.date_a}</Table.Td>
+                    <Table.Td>{row.founded}</Table.Td>
+                  </Table.Tr>
+          ))} 
+          </Table.Tbody>
+      </Table>
+      </ScrollArea> 
+        </div>
+        <div className='font-bold mt-4 text-lg text-emerald-700'>
+          Minimum Stocks: 
+          </div>
+        <div>
+        <ScrollArea h={100} onScrollPositionChange={({ y }) => setScrolled(y !== 0)}>
+      <Table miw={700}>
+        <Table.Thead>
+          <Table.Tr>  
+          <Table.Th>Symbol</Table.Th>
+            <Table.Th>Min Price</Table.Th>
+            <Table.Th>Date of Min Price</Table.Th>
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>                
+          {minStock.map((row) => (
+                  <Table.Tr key={row.symbol}>
+                    <Table.Td>{row.symbol}</Table.Td>
+                    <Table.Td>{row.min_price}</Table.Td>
+                    <Table.Td>{row.min_date}</Table.Td>
+                  </Table.Tr>
+          ))} 
+          </Table.Tbody>
+      </Table>
+    </ScrollArea> 
+        </div>
+        <div className='font-bold mt-4 text-lg text-emerald-700'>
+          Maximum Stocks: 
+          </div>
+        <div>
+        <ScrollArea h={100} onScrollPositionChange={({ y }) => setScrolled(y !== 0)}>
+      <Table miw={700}>
+        <Table.Thead>
+          <Table.Tr>  
+          <Table.Th>Symbol</Table.Th>
+            <Table.Th>Max Price</Table.Th>
+            <Table.Th>Date of Max Price</Table.Th>
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>                
+          {maxStock.map((row) => (
+                  <Table.Tr key={row.symbol}>
+                    <Table.Td>{row.symbol}</Table.Td>
+                    <Table.Td>{row.max_price}</Table.Td>
+                    <Table.Td>{row.max_date}</Table.Td>
+                  </Table.Tr>
+          ))} 
+          </Table.Tbody>
+      </Table>
+    </ScrollArea> 
+        </div>
+        <div className='font-bold mt-4 text-lg text-emerald-700'>
+          Average Price of Stocks: 
+          </div>
+        <div>
+        <ScrollArea h={100} onScrollPositionChange={({ y }) => setScrolled(y !== 0)}>
+      <Table miw={700}>
+        <Table.Thead>
+          <Table.Tr>  
+          <Table.Th>Symbol</Table.Th>
+            <Table.Th>Average Price Of Stock</Table.Th>
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>                
+          {avgHigh.map((row) => (
+                  <Table.Tr key={row.symbol}>
+                    <Table.Td>{row.symbol}</Table.Td>
+                    <Table.Td>{row.avg_high}</Table.Td>
+                  </Table.Tr>
+          ))} 
+          </Table.Tbody>
+      </Table>
+    </ScrollArea> 
+        </div>
+      </div>
+    )}
+    </div>
+
   </Modal>
 )}
       </div>
