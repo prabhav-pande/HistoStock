@@ -16,7 +16,6 @@ BEGIN
     );
 
     IF p_min_date IS NULL OR p_max_date IS NULL THEN
-        -- Handle the case where no stocks are found in the portfolio
         RAISE EXCEPTION 'No stocks found in the given portfolio';
     END IF;
 END;

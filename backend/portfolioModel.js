@@ -23,8 +23,8 @@ const getStocks = async (id) => {
         }
       });
     }); 
-  } catch (error_1) {
-    console.error(error_1);
+  } catch (error) {
+    console.error(error);
     throw new Error("Internal server error");
   }
 };
