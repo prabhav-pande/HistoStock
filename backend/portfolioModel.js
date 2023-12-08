@@ -32,7 +32,7 @@ const getStocks = async (id) => {
 const getIndustry = async () => {
   try {
     return await new Promise(function (resolve, reject) {
-      pool.query("SELECT distinct industry FROM company", (error, results) => {
+      pool.query("SELECT DISTINCT industry FROM company", (error, results) => {
         if (error) {
           reject(error);
         }
@@ -51,7 +51,6 @@ const getIndustry = async () => {
 
 
 const updateStock = async (id, symbol, num) => {
-  console.log("IN UPDATE STOCK: ", id, symbol, num)
   try {
     await new Promise(function (resolve, reject) {
       pool.query(
@@ -169,7 +168,7 @@ const getPortfolios = async () => {
       );
     });
   };
-  
+
   const createStocks = (body) => {
     return new Promise(function (resolve, reject) {
       const { id, symbol, num } = body;
@@ -255,9 +254,174 @@ const getDates = async (id) => {
     return result; 
   } catch (error) {
     console.error(error);
-    throw new Error(error.message || 'Internal server error');
+    throw new Error('Internal server error');
   }
 };
+
+const getPortfolioValue = async (id, startDate, endDate) => {
+  try {
+    const result = await new Promise(function (resolve, reject) {
+      pool.query(
+        "CALL calculate_portfolio_value($1, $2, $3, null, null, null)",
+        [id, startDate, endDate],
+        (error, results) => {
+          if (error) {
+            reject(error);
+          } else {
+            const { start_value_result, end_value_result, profit_result } = results.rows[0];
+
+            if (start_value_result !== null && end_value_result !== null && profit_result !== null) {
+              resolve({ start: start_value_result, end: end_value_result, profit: profit_result});
+            } else {
+              reject(new Error("No results found"));
+            }
+          }
+        }
+      );
+    });
+
+    return result; 
+  } catch (error) {
+    console.error(error);
+    throw new Error('Internal server error');
+  }
+};
+
+
+const getStockMinPrice = async (id, startDate, endDate) => {
+  try {
+    const result = await new Promise(function (resolve, reject) {
+      pool.query(
+        "CALL find_stock_min($1, $2, $3)",
+        [id, startDate, endDate],
+        async (error, results) => {
+          if (error) {
+            reject(error);
+          } else {
+            const minPriceResult = await pool.query(
+              "SELECT * FROM stock_min_price_dates"
+            );
+
+            if (minPriceResult.rows.length > 0) {
+              resolve(minPriceResult.rows);
+            } else {
+              reject(new Error("No results found for minimum stock price"));
+            }
+          }
+        }
+      );
+    });
+
+    return result;
+  } catch (error) {
+    console.error(error);
+    throw new Error("Internal server error");
+  }
+};
+
+const getStockMaxPrice = async (id, startDate, endDate) => {
+  try {
+    const result = await new Promise(function (resolve, reject) {
+      pool.query(
+        "CALL find_stock_max($1, $2, $3)",
+        [id, startDate, endDate],
+        async (error, results) => {
+          if (error) {
+            reject(error);
+          } else {
+            // Query the created table to get the results
+            const maxPriceResult = await pool.query(
+              "SELECT * FROM stock_max_price_dates"
+            );
+
+            if (maxPriceResult.rows.length > 0) {
+              resolve(maxPriceResult.rows);
+            } else {
+              reject(new Error("No results found for maximum stock price"));
+            }
+          }
+        }
+      );
+    });
+
+    return result;
+  } catch (error) {
+    console.error(error);
+    throw new Error("Internal server error");
+  }
+};
+
+const getAvgHigh = async (id, startDate, endDate) => {
+  try {
+    const result = await new Promise(function (resolve, reject) {
+      pool.query(
+        "CALL rank_stocks_by_avg_high($1, $2, $3)",
+        [id, startDate, endDate],
+        async (error, results) => {
+          if (error) {
+            reject(error);
+          } else {
+            // Query the created table to get the results
+            const avgPriceResult = await pool.query(
+              "SELECT * FROM stocks_avg_high"
+            );
+
+            if (avgPriceResult.rows.length > 0) {
+              resolve(avgPriceResult.rows);
+            } else {
+              reject(new Error("No results found for avg stock price"));
+            }
+          }
+        }
+      );
+    });
+
+    return result;
+  } catch (error) {
+    console.error(error);
+    throw new Error("Internal server error");
+  }
+};
+
+const getMICompany = async (id, startDate, endDate) => {
+  try {
+    const result = await new Promise(function (resolve, reject) {
+      pool.query(
+        "CALL most_improved_stock($1, $2, $3, null, null, null, null, null, null, null)",
+        [id, startDate, endDate],
+        (error, results) => {
+          if (error) {
+            reject(error);
+          } else {
+            const { symbol_result, price_increase_result, company_name_result, industry_result, sub_industry_result, date_added, founded_result } = results.rows[0];
+
+            if (symbol_result !== null && price_increase_result !== null && company_name_result !== null &&
+              industry_result !== null && sub_industry_result !== null && date_added !== null && founded_result !== null) {
+              resolve({ 
+                symbol: symbol_result, 
+                pir: price_increase_result, 
+                c_name: company_name_result,
+                indus: industry_result,
+                sub_indus: sub_industry_result,
+                date_a: date_added,
+                founded: founded_result
+              });
+            } else {
+              reject(new Error("No results found"));
+            }
+          }
+        }
+      );
+    });
+
+    return result; 
+  } catch (error) {
+    console.error(error);
+    throw new Error('Internal server error');
+  }
+};
+
+
 
 
 
@@ -272,5 +436,10 @@ const getDates = async (id) => {
     getSearchStocks,
     updatePortfolio,
     deletePortfolioAndHoldings,
-    getDates
+    getDates,
+    getStockMinPrice,
+    getStockMaxPrice, 
+    getPortfolioValue,
+    getAvgHigh,
+    getMICompany
   };

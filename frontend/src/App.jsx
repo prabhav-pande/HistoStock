@@ -38,7 +38,6 @@ function App() {
     fetch('http://localhost:3001/industry')
     .then(response => response.json())
     .then(data => {
-      console.log(data);
       const industryNames = data.map(item => item.industry);
       industryNames.push('ALL');
       setIndustry(industryNames);
@@ -52,7 +51,6 @@ function App() {
         return response.text();
       })
       .then(data => {
-        console.log(data)
         setPortfolio(JSON.parse(data));
       });
   }
@@ -105,8 +103,7 @@ function App() {
       // Fetch the stocks pertaining to the portfolio's sector
       const allStocksResponse = await fetch(`http://localhost:3001/stocks?port_sect=${port_sect}`);
       const allStocksData = await allStocksResponse.json();
-      console.log(allStocksData);
-      
+
       const stockNames = allStocksData.map(item => item.ticker);
       setSearchStocks(stockNames);
 
@@ -166,8 +163,6 @@ function App() {
       });
   
       const updatedData = await updateStockResponse.text();
-      console.log("UPDATED DATA", updatedData);
-  
       // Open the portfolio and update it after updating the stock
       const stocksResponse = await fetch(`http://localhost:3001/stocks/${id}`);
       const stocksData = await stocksResponse.text();
@@ -231,9 +226,42 @@ function App() {
       });
   }
 
-  function createReport() {
+  async function createReport() {
 
+    const formattedStartDate = startDate.toISOString();
+    const formattedEndDate = endDate.toISOString();
+  
+    console.log(currPortfolio, formattedStartDate, formattedEndDate);
+  
+    try {
+      const stock_min = await fetch(`http://localhost:3001/report1/${currPortfolio}?startDate=${formattedStartDate}&endDate=${formattedEndDate}`);
+      const stock_min_data = await stock_min.text();
+
+      const stock_max = await fetch(`http://localhost:3001/report2/${currPortfolio}?startDate=${formattedStartDate}&endDate=${formattedEndDate}`);
+      const stock_max_data = await stock_max.text();
+
+      const port_value = await fetch(`http://localhost:3001/report3/${currPortfolio}?startDate=${formattedStartDate}&endDate=${formattedEndDate}`);
+      const port_value_data = await port_value.json();
+      const {start, end, profit} = port_value_data;
+  
+      const avg_high = await fetch(`http://localhost:3001/report4/${currPortfolio}?startDate=${formattedStartDate}&endDate=${formattedEndDate}`);
+      const avg_high_data = await avg_high.text();
+
+      const most_improved = await fetch(`http://localhost:3001/report5/${currPortfolio}?startDate=${formattedStartDate}&endDate=${formattedEndDate}`);
+      const most_improved_data = await most_improved.json();
+      const {symbol, pir, c_name, indus, sub_indus, date_a, founded} = most_improved_data;
+  
+      console.log(stock_min_data);
+      console.log(stock_max_data);
+      console.log(start, end, profit)
+      console.log(avg_high_data)
+      console.log(symbol, pir, c_name, indus, sub_indus, date_a, founded)
+    } catch (error) {
+      console.error(error);
+      // Handle errors as needed
+    }
   }
+  
 
   return (
     <MantineProvider>
@@ -282,7 +310,11 @@ function App() {
                     </svg>
                   </Table.Td> 
                   <Table.Td>
+                  {row.num_of_stocks > 0 ? (
                   <svg xmlns="http://www.w3.org/2000/svg" className="icon icon-tabler icon-tabler-report-analytics" width="24" height="24" viewBox="0 0 24 24" onClick={() => {openReport(row.port_id)}} strokeWidth={2} stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2" /><path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" /><path d="M9 17v-5" /><path d="M12 17v-1" /><path d="M15 17v-3" /></svg>
+                  ) : (
+                  <span style={{ color: 'gray' }}>Cannot be generated</span>
+                  )}
                   </Table.Td>
                   </Table.Tr>
           ))} 
@@ -337,7 +369,7 @@ function App() {
 </svg>
                     </Table.Td> 
                     <Table.Td> 
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="fill-red-400 w-6 h-6" onClick={() => {deleteStock(row.portfolio_id, row.symbol)}}>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="fill-red-400 w-6 h-6" onClick={() => {deleteStock(row.portfolio_id, row.symbol)}} >
   <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                     </svg>
                   </Table.Td> 

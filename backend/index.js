@@ -20,6 +20,76 @@ app.get('/', (req, res) => {
     })
 })
 
+app.get('/report1/:id', (req, res) => {
+  const id = req.params.id;
+  const startDate = req.query.startDate;
+  const endDate = req.query.endDate;
+
+  portfolioModel.getStockMinPrice(id, startDate, endDate)
+    .then(response => {
+      res.status(200).send(response);
+    })
+    .catch(error => {
+      res.status(500).send(error);
+    });
+});
+
+app.get('/report2/:id', (req, res) => {
+  const id = req.params.id;
+  const startDate = req.query.startDate;
+  const endDate = req.query.endDate;
+
+  portfolioModel.getStockMaxPrice(id, startDate, endDate)
+    .then(response => {
+      res.status(200).send(response);
+    })
+    .catch(error => {
+      res.status(500).send(error);
+    });
+});
+
+app.get('/report3/:id', (req, res) => {
+  const id = req.params.id;
+  const startDate = req.query.startDate;
+  const endDate = req.query.endDate;
+
+  portfolioModel.getPortfolioValue(id, startDate, endDate)
+    .then(response => {
+      res.status(200).send(response);
+    })
+    .catch(error => {
+      res.status(500).send(error);
+    });
+});
+
+app.get('/report4/:id', (req, res) => {
+  const id = req.params.id;
+  const startDate = req.query.startDate;
+  const endDate = req.query.endDate;
+
+  portfolioModel.getAvgHigh(id, startDate, endDate)
+    .then(response => {
+      res.status(200).send(response);
+    })
+    .catch(error => {
+      res.status(500).send(error);
+    });
+});
+
+app.get('/report5/:id', (req, res) => {
+  const id = req.params.id;
+  const startDate = req.query.startDate;
+  const endDate = req.query.endDate;
+
+  portfolioModel.getMICompany(id, startDate, endDate)
+    .then(response => {
+      res.status(200).send(response);
+    })
+    .catch(error => {
+      res.status(500).send(error);
+    });
+});
+
 app.get('/dates/:id', (req, res) => {
   portfolioModel.getDates(req.params.id)
   .then(response => {
