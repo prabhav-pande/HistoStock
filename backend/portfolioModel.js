@@ -9,69 +9,31 @@ const pool = new Pool({
   port: process.env.PG_PORT,
 });
 
-const getStocks = async (id) => {
-  try {
-    return await new Promise(function (resolve, reject) {
-      pool.query("SELECT * FROM portfolio_holdings WHERE portfolio_id = $1",[id], (error, results) => {
+// Creates a portfolio
+const createPortfolio = async (body) => {
+  return new Promise(function (resolve, reject) {
+    const { port_name, port_industry } = body;
+    pool.query(
+      "INSERT INTO portfolios (port_name, port_sect) VALUES ($1, $2) RETURNING *",
+      [port_name, port_industry],
+      (error, results) => {
         if (error) {
+          console.log("database error", error)
           reject(error);
         }
         if (results && results.rows) {
-          resolve(results.rows);
+          resolve(
+            `A new portfolio has been added: ${JSON.stringify(results.rows[0])}`
+          );
         } else {
           reject(new Error("No results found"));
         }
-      });
-    }); 
-  } catch (error) {
-    console.error(error);
-    throw new Error("Internal server error");
-  }
+      }
+    );
+  });
 };
 
-const getIndustry = async () => {
-  try {
-    return await new Promise(function (resolve, reject) {
-      pool.query("SELECT DISTINCT industry FROM company", (error, results) => {
-        if (error) {
-          reject(error);
-        }
-        if (results && results.rows) {
-          resolve(results.rows);
-        } else {
-          reject(new Error("No results found"));
-        }
-      });
-    }); 
-  } catch (error_1) {
-    console.error(error_1);
-    throw new Error("Internal server error");
-  }
-};
-
-
-const updateStock = async (id, symbol, num) => {
-  try {
-    await new Promise(function (resolve, reject) {
-      pool.query(
-        "UPDATE portfolio_holdings SET num_of_stocks = $1 WHERE portfolio_id = $2 AND symbol = $3",
-        [num, id, symbol],
-        (error, results) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve(`Portfolio updated with ID and Stock: ${id},${symbol} with new number of stocks ${num}`);
-          }
-        }
-      );
-    });
-  } catch (error) {
-    console.error(error);
-    throw new Error("Internal server error");
-  }  
-};
-
-
+// Update a portfolio
 const updatePortfolio = async (id) => {
   try {
     await new Promise(function (resolve, reject) {
@@ -93,7 +55,7 @@ const updatePortfolio = async (id) => {
   }  
 };
 
-//get all portfolios our database
+// Get all portfolios our database
 const getPortfolios = async () => {
     try {
       return await new Promise(function (resolve, reject) {
@@ -114,32 +76,7 @@ const getPortfolios = async () => {
     }
   };
 
-  const createPortfolio = async (body) => {
-    return new Promise(function (resolve, reject) {
-      const { port_name, port_industry } = body;
-      pool.query(
-        "INSERT INTO portfolios (port_name, port_sect) VALUES ($1, $2) RETURNING *",
-        [port_name, port_industry],
-        (error, results) => {
-          if (error) {
-            console.log("database error", error)
-            reject(error);
-          }
-          if (results && results.rows) {
-            resolve(
-              `A new portfolio has been added: ${JSON.stringify(results.rows[0])}`
-            );
-          } else {
-            reject(new Error("No results found"));
-          }
-        }
-      );
-    });
-  };
-
-
-
-
+  // Delete portfolio and all its holdings
   const deletePortfolioAndHoldings = async (portfolioId) => {
     try {
       await pool.query('BEGIN');
@@ -169,6 +106,7 @@ const getPortfolios = async () => {
     });
   };
 
+  // create a stock
   const createStocks = (body) => {
     return new Promise(function (resolve, reject) {
       const { id, symbol, num } = body;
@@ -192,6 +130,72 @@ const getPortfolios = async () => {
       );
     });
   };
+
+// get stocks for that portfolio
+const getStocks = async (id) => {
+  try {
+    return await new Promise(function (resolve, reject) {
+      pool.query("SELECT * FROM portfolio_holdings WHERE portfolio_id = $1",[id], (error, results) => {
+        if (error) {
+          reject(error);
+        }
+        if (results && results.rows) {
+          resolve(results.rows);
+        } else {
+          reject(new Error("No results found"));
+        }
+      });
+    }); 
+  } catch (error) {
+    console.error(error);
+    throw new Error("Internal server error");
+  }
+};
+
+// Update a stock number
+const updateStock = async (id, symbol, num) => {
+  try {
+    await new Promise(function (resolve, reject) {
+      pool.query(
+        "UPDATE portfolio_holdings SET num_of_stocks = $1 WHERE portfolio_id = $2 AND symbol = $3",
+        [num, id, symbol],
+        (error, results) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(`Portfolio updated with ID and Stock: ${id},${symbol} with new number of stocks ${num}`);
+          }
+        }
+      );
+    });
+  } catch (error) {
+    console.error(error);
+    throw new Error("Internal server error");
+  }  
+};
+
+
+
+// Get the industry to dynamically build the industry search
+const getIndustry = async () => {
+  try {
+    return await new Promise(function (resolve, reject) {
+      pool.query("SELECT DISTINCT industry FROM company", (error, results) => {
+        if (error) {
+          reject(error);
+        }
+        if (results && results.rows) {
+          resolve(results.rows);
+        } else {
+          reject(new Error("No results found"));
+        }
+      });
+    }); 
+  } catch (error_1) {
+    console.error(error_1);
+    throw new Error("Internal server error");
+  }
+};
 
   //get all portfolios our database
 const getSearchStocks = async (port_sect) => {
@@ -228,7 +232,7 @@ const getSearchStocks = async (port_sect) => {
   }
 };
 
-
+// get dates
 const getDates = async (id) => {
   try {
     const result = await new Promise(function (resolve, reject) {
@@ -258,6 +262,7 @@ const getDates = async (id) => {
   }
 };
 
+// get portfolio value
 const getPortfolioValue = async (id, startDate, endDate) => {
   try {
     const result = await new Promise(function (resolve, reject) {
@@ -289,7 +294,7 @@ const getPortfolioValue = async (id, startDate, endDate) => {
   }
 };
 
-
+// get minimum price of the stock
 const getStockMinPrice = async (id, startDate, endDate) => {
   try {
     const result = await new Promise(function (resolve, reject) {
@@ -321,6 +326,7 @@ const getStockMinPrice = async (id, startDate, endDate) => {
   }
 };
 
+// get stock max price
 const getStockMaxPrice = async (id, startDate, endDate) => {
   try {
     const result = await new Promise(function (resolve, reject) {
@@ -353,6 +359,7 @@ const getStockMaxPrice = async (id, startDate, endDate) => {
   }
 };
 
+// get average high
 const getAvgHigh = async (id, startDate, endDate) => {
   try {
     const result = await new Promise(function (resolve, reject) {
@@ -385,6 +392,7 @@ const getAvgHigh = async (id, startDate, endDate) => {
   }
 };
 
+// get most improved company
 const getMICompany = async (id, startDate, endDate) => {
   try {
     const result = await new Promise(function (resolve, reject) {

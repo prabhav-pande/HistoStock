@@ -151,8 +151,6 @@ app.put('/stocks/:id', (req, res) => {
   const symbol = newData.symbol;
   const num = newData.num_of_stocks;
 
-  console.log("TO UPDATE: ", id, symbol, num)
-
   // Ensure that the id is parsed as an integer
   const parsedId = parseInt(id, 10);
   if (isNaN(parsedId) || parsedId <= 0) {
