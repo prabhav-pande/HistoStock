@@ -132,11 +132,11 @@ function App() {
         body: JSON.stringify({ id, symbol, num: num }),
       });
   
-      const createStockData = await createStockResponse.text();
-      alert(createStockData);
   
       // Open the portfolio and update it after creating the stock
-      await openPortfolio(currPortfolio);
+      const stocksResponse = await fetch(`http://localhost:3001/stocks/${id}`);
+      const stocksData = await stocksResponse.text();
+      setStocks(JSON.parse(stocksData));
   
       // Update the portfolio
       await fetch(`http://localhost:3001/update_p/${id}`);
@@ -167,7 +167,6 @@ function App() {
         body: JSON.stringify({ id, symbol, num_of_stocks: num }),
       });
   
-      const updatedData = await updateStockResponse.text();
       // Open the portfolio and update it after updating the stock
       const stocksResponse = await fetch(`http://localhost:3001/stocks/${id}`);
       const stocksData = await stocksResponse.text();
